@@ -22,7 +22,7 @@ main = let base = 10 in defaultMain
   [ bgroup "scc" $ do
       e <- [ 1 .. 6 ] ; let n = base^e :: Int
       return $ bgroup ("n="<> show base <> "^" <> show e) $ do
-        m <- takeWhile (<= n^2) $ iterate (*base) n
+        m <- takeWhile (<= min (n^2) (100*n)) $ iterate (*base) n
         return $ bgroup ("m=n*" <> show (div m n)) $ do
           (name,fun) <- [ ("containers",scc_sizes)
                         , ("GraphSCC",scc_sizes')
@@ -35,8 +35,7 @@ main = let base = 10 in defaultMain
   , bgroup "buildG" $ do
       e <- [ 1 .. 6 ] ; let n = base^e :: Int
       return $ bgroup ("n="<> show base <> "^" <> show e) $ do
-        c <- [ 1.5 ] --  [0, 0.1 .. 1 ]
-        m <- takeWhile (<= n^2) $ iterate (*base) n
+        m <- takeWhile (<= min (n^2) (100*n)) $ iterate (*base) n
         return $ bench ("m=n*" <> show (div m n))
           -- this time, do count time for construction
           $ whnf (sum . concat . A.elems . random_directed_graph n m) 42
