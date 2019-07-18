@@ -17,12 +17,13 @@ import qualified Data.Array as A
 
 import Gauge (bgroup, bench, defaultMain, whnf)
 
+
 main = let base = 10 in defaultMain
   [ bgroup "scc" $ do
       e <- [ 1 .. 6 ] ; let n = base^e :: Int
       return $ bgroup ("n="<> show base <> "^" <> show e) $ do
-        p <- [ 0.5 ] --  [0, 0.1 .. 1 ]
-        return $ bgroup ("p=" <> show p) $ do
+        m <- takeWhile (<= n^2) $ iterate (*base) n
+        return $ bgroup ("m=n*" <> show (div m n)) $ do
           (name,fun) <- [ ("containers",scc_sizes)
                         , ("GraphSCC",scc_sizes')
                         ]
@@ -30,14 +31,15 @@ main = let base = 10 in defaultMain
             -- time for construction of graph should be discarded
             -- by benchmark framework
             -- https://github.com/vincenthz/hs-gauge/issues/95#issuecomment-508533592
-            $ whnf (sum . fun) (random_directed_graph n p 42)
+            $ whnf (sum . fun) (random_directed_graph n m 42)
   , bgroup "buildG" $ do
       e <- [ 1 .. 6 ] ; let n = base^e :: Int
       return $ bgroup ("n="<> show base <> "^" <> show e) $ do
-        p <- [ 0.5 ] --  [0, 0.1 .. 1 ]
-        return $ bench ("p=" <> show p)
+        c <- [ 1.5 ] --  [0, 0.1 .. 1 ]
+        m <- takeWhile (<= n^2) $ iterate (*base) n
+        return $ bench ("m=n*" <> show (div m n))
           -- this time, do count time for construction
-          $ whnf (sum . concat . A.elems . random_directed_graph n p) 42
+          $ whnf (sum . concat . A.elems . random_directed_graph n m) 42
   ]
 
 scc_sizes :: G.Graph -> [Int]
@@ -47,21 +49,25 @@ scc_sizes' :: G.Graph -> [Int]
 scc_sizes' g = counting_sort (A.bounds g) $ map length $ S.sccList g
 
 counting_sort :: (Int,Int) -> [Int] -> [Int]
-counting_sort (lo,hi) xs = do
-  (k,v) <- A.assocs $ A.accumArray (+) 0 (lo,hi) $ zip xs $ repeat 1
+counting_sort bnd xs = do
+  (k,v) <- A.assocs $ A.accumArray (+) 0 bnd $ zip xs $ repeat 1
   replicate v k
 
 random_directed_graph
   :: Int -- ^ number of vertices
-  -> Double -- ^ edge probability
+  -> Int -- ^ number of edges
   -> Seed
   -> G.Graph
-random_directed_graph n p s = G.buildG (1,n)
-  $ map snd
-  $ filter (\(r,e) -> r < p)
-  $ zip (random_doubles s)
-  $ (,) <$> [1..n] <*> [1..n]
+random_directed_graph n m s = G.buildG (0,n-1)
+  $ take  m
+  $ pairs
+  -- yes I know this does not give an even distribution:
+  $ map (\r -> mod r n) 
+  $ random_ints s
   
+pairs :: [a] -> [(a,a)]
+pairs (x:y:zs) = (x,y) : pairs zs
+
 
 newtype Seed = Seed Int deriving Num
 
@@ -71,7 +77,3 @@ newtype Seed = Seed Int deriving Num
 random_ints :: Seed -> [Int]
 random_ints (Seed s) =
   iterate (\x -> mod (1103515245 * x + 12345) (2^31)) s
-
-random_doubles :: Seed -> [Double]
-random_doubles s =
-  map (\i -> fromIntegral i / fromIntegral (2^31)) $ random_ints s
