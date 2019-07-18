@@ -1,0 +1,12 @@
+resolver: lts-13.28
+
+packages:
+- .
+
+extra-deps:
+- gauge-0.2.4
+- GraphSCC-1.0.4
+
+ghc-options:
+  "*" : -rtsopts
+
