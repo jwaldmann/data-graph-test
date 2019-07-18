@@ -18,13 +18,7 @@ import qualified Data.Array as A
 import Gauge (bgroup, bench, defaultMain, whnf)
 
 main = let base = 10 in defaultMain
-  [ bgroup "buildG" $ do
-      e <- [ 1 .. 6 ] ; let n = base^e :: Int
-      return $ bgroup ("n="<> show base <> "^" <> show e) $ do
-        p <- [ 0.5 ] --  [0, 0.1 .. 1 ]
-        return $ bench ("p=" <> show p)
-          $ whnf (sum . concat . A.elems . random_directed_graph n p) 42
-  , bgroup "scc" $ do
+  [ bgroup "scc" $ do
       e <- [ 1 .. 6 ] ; let n = base^e :: Int
       return $ bgroup ("n="<> show base <> "^" <> show e) $ do
         p <- [ 0.5 ] --  [0, 0.1 .. 1 ]
@@ -33,7 +27,17 @@ main = let base = 10 in defaultMain
                         , ("GraphSCC",scc_sizes')
                         ]
           return $ bench name
+            -- time for construction of graph should be discarded
+            -- by benchmark framework
+            -- https://github.com/vincenthz/hs-gauge/issues/95#issuecomment-508533592
             $ whnf (sum . fun) (random_directed_graph n p 42)
+  , bgroup "buildG" $ do
+      e <- [ 1 .. 6 ] ; let n = base^e :: Int
+      return $ bgroup ("n="<> show base <> "^" <> show e) $ do
+        p <- [ 0.5 ] --  [0, 0.1 .. 1 ]
+        return $ bench ("p=" <> show p)
+          -- this time, do count time for construction
+          $ whnf (sum . concat . A.elems . random_directed_graph n p) 42
   ]
 
 scc_sizes :: G.Graph -> [Int]

@@ -13,7 +13,8 @@ category:            Data
 build-type:          Simple
 extra-source-files:  CHANGELOG.md
 
-executable data-graph-test
+benchmark data-graph-test
+  type:             exitcode-stdio-1.0
   main-is:             DGT.hs
   -- other-modules:
   -- other-extensions:
